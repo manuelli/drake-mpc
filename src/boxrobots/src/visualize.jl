@@ -7,7 +7,7 @@ using Interact, Reactive
   force_arrow_normalizer::Float64 = 10.0
   com_radius::Float64 = 0.1
   contact_point_radius::Float64 = 0.05
-  playback_dt::Float64 = 0.05
+  playback_speed::Float64 = 1.
 end
 
 
@@ -90,45 +90,23 @@ function draw_environment(vis::DrakeVisualizer.Visualizer, env::Environment)
   end
 end
 
-function playback_trajectory(vis::DrakeVisualizer.Visualizer, traj::Trajectory{BoxRobotSimulationData}; options=nothing, playback_speed=1.0)
+function playback_trajectory{SimData<:BoxRobotSimulationData}(vis::DrakeVisualizer.Visualizer, traj::Trajectory{SimData}; options=BoxRobotVisualizerOptions())
   """
   Draws each frame of the trajectory, sleeps for dt seconds in between draws
   Arguments:
     - playback_speed: 1.0 is 1X which is real time
   """
 
-  # default for options
-  if options == nothing
-    options = BoxRobotVisualizerOptions()
+  for (ind, t) in enumerate(traj.time)
+    data = traj(t)
+    state = data.state
+    input = data.input
+    draw_box_robot_state(vis, state;  options=options, input=input)
+    if ind < length(traj.time)
+        dt = traj.time[ind + 1] - t
+        sleep(dt / options.playback_speed)
+    end
   end
-
-  t_start = traj.time[1]
-  t_end = traj.time[end]
-  t = copy(t_start)
-  dt = options.playback_dt * playback_speed
-  sleep_time = options.playback_dt
-  # dt = traj.time[2] - traj.time[1]
-  data = traj.data
-
-  while (t <= t_end)
-    d = traj(t)
-    state = d.state
-    input = d.input
-    draw_box_robot_state(vis::DrakeVisualizer.Visualizer, state::BoxRobotState;  options=options, input=input)
-    sleep(sleep_time)
-    t += dt
-  end
-
-
-  # for idx=1:num_time_steps
-  #   t = t_start + (idx - 1)*dt
-  #   d = eval(traj, t)
-  #   state = d.state
-  #   input = d.input
-  #   draw_box_robot_state(vis::DrakeVisualizer.Visualizer, state::BoxRobotState;  options=options, input=input)
-  #   sleep(dt)
-  # end
-
 end
 
 function slider_playback(vis::DrakeVisualizer.Visualizer, traj::Trajectory{BoxRobotSimulationData}; options=nothing)
